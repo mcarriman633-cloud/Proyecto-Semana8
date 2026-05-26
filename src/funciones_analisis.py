@@ -1,21 +1,27 @@
 import pandas as pd
+import numpy as np
+from scipy import stats
+import joblib
 import os
 
 def cargar_datos(ruta):
-    """Carga los datos detectando el formato por la extensión."""
+    """Carga datos de forma flexible (detecta .csv o .xlsx)."""
     _, ext = os.path.splitext(ruta)
-    if ext == '.csv':
-        return pd.read_csv(ruta)
-    else:
-        return pd.read_excel(ruta)
+    return pd.read_csv(ruta) if ext == '.csv' else pd.read_excel(ruta)
 
 def filtrar_reporte(df, area):
-    """Genera reportes diferenciados según el área solicitada."""
+    """Filtra columnas según necesidad operativa o ambiental."""
     if area == 'operaciones':
-        cols = ['fecha_registro', 'planta', 'caudal_entrada_m3_d', 'DBO_entrada_mg_L', 
-                'DBO_salida_mg_L', 'energia_aeracion_kWh', 'lodos_generados_kg_d']
-        return df[cols]
-    elif area == 'ambiental':
-        cols = ['fecha_registro', 'planta', 'DBO_salida_mg_L', 'cumplimiento_norma']
-        return df[cols]
-    return df
+        return df[['fecha_registro', 'planta', 'DBO_salida_mg_L', 'caudal_entrada_m3_d']]
+    return df[['fecha_registro', 'planta', 'DBO_salida_mg_L', 'cumplimiento_norma']]
+
+def analizar_calidad(df, columna):
+    """Detecta anomalías usando Z-Score (SciPy) y maneja robustez con NumPy."""
+    datos_limpios = df[columna].replace([np.inf, -np.inf], np.nan).dropna()
+    return stats.zscore(datos_limpios)
+
+def guardar_modelo(objeto, nombre_archivo):
+    """Persiste objetos complejos usando Joblib."""
+    if not os.path.exists('outputs'):
+        os.makedirs('outputs')
+    joblib.dump(objeto, f'outputs/{nombre_archivo}.pkl')
